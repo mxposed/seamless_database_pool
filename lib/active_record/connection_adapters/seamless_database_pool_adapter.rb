@@ -51,7 +51,8 @@ module ActiveRecord
           end
         end if config[:read_pool]
 
-        klass = ::ActiveRecord::ConnectionAdapters::SeamlessDatabasePoolAdapter.adapter_class(master_connection)
+        adapter_class = "active_record/connection_adapters/#{master_config[:adapter]}_adapter".classify.constantize
+        klass = ::ActiveRecord::ConnectionAdapters::SeamlessDatabasePoolAdapter.adapter_class(adapter_class)
         klass.new(nil, logger, master_connection, read_connections, pool_weights)
       end
 
@@ -101,25 +102,22 @@ module ActiveRecord
 
       class << self
         # Create an anonymous class that extends this one and proxies methods to the pool connections.
-        def adapter_class(master_connection)
+        def adapter_class(klass)
           # Define methods to proxy to the appropriate pool
           read_only_methods = [:select, :select_rows, :execute, :tables, :columns, :exec_query]
           clear_cache_methods = [:insert, :update, :delete]
           master_methods = []
-          adapter_class_name = nil
-          master_connection.with_connection { |conn|
-            adapter_class_name = conn.adapter_name.classify
-            return const_get(adapter_class_name) if const_defined?(adapter_class_name, false)
+          adapter_class_name = klass.name.demodulize
+          return const_get(adapter_class_name) if const_defined?(adapter_class_name, false)
 
 
-            # Get a list of all methods redefined by the underlying adapter. These will be
-            # proxied to the master connection.
-            override_classes = (conn.class.ancestors - AbstractAdapter.ancestors)
-            override_classes.each do |connection_class|
-              master_methods.concat(connection_class.public_instance_methods(false))
-              master_methods.concat(connection_class.protected_instance_methods(false))
-            end
-          }
+          # Get a list of all methods redefined by the underlying adapter. These will be
+          # proxied to the master connection.
+          override_classes = (klass.ancestors - AbstractAdapter.ancestors)
+          override_classes.each do |connection_class|
+            master_methods.concat(connection_class.public_instance_methods(false))
+            master_methods.concat(connection_class.protected_instance_methods(false))
+          end
           master_methods = master_methods.collect{|m| m.to_sym}.uniq
           master_methods -= public_instance_methods(false) + protected_instance_methods(false) + private_instance_methods(false)
           master_methods -= read_only_methods
