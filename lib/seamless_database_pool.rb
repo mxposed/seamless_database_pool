@@ -113,7 +113,7 @@ module SeamlessDatabasePool
           return connection
         elsif connection_type == :random
           return pool_connection.random_read_connection(:backup)
-        else
+        elsif connection_type == :master
           return pool_connection.master_connection
         end
       end

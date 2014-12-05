@@ -98,7 +98,7 @@ module ActiveRecord
   module ConnectionAdapters
     class SeamlessDatabasePoolAdapter < AbstractAdapter
 
-      attr_reader :read_connections, :master_connection
+      attr_reader :read_connections
 
       class << self
         # Create an anonymous class that extends this one and proxies methods to the pool connections.
@@ -123,16 +123,16 @@ module ActiveRecord
           master_methods -= read_only_methods
           master_methods -= [:select_all, :select_one, :select_value, :select_values]
           master_methods -= clear_cache_methods
-          # puts (master_methods + read_only_methods + clear_cache_methods).inspect
-          # puts "=" * 50
+           puts (master_methods + read_only_methods + clear_cache_methods).inspect
+           puts "=" * 50
 
           klass = Class.new(self)
           master_methods.each do |method_name|
             klass.class_eval <<-EOS, __FILE__, __LINE__ + 1
               def #{method_name}(*args, &block)
-                use_master_connection do
+                #use_master_connection do
                   return proxy_connection_method(master_connection, :#{method_name}, :master, *args, &block)
-                end
+                #end
               end
             EOS
           end
@@ -141,9 +141,9 @@ module ActiveRecord
             klass.class_eval <<-EOS, __FILE__, __LINE__ + 1
               def #{method_name}(*args, &block)
                 clear_query_cache if query_cache_enabled
-                use_master_connection do
+                #use_master_connection do
                   return proxy_connection_method(master_connection, :#{method_name}, :master, *args, &block)
-                end
+                #end
               end
             EOS
           end
@@ -151,7 +151,7 @@ module ActiveRecord
           read_only_methods.each do |method_name|
             klass.class_eval <<-EOS, __FILE__, __LINE__ + 1
               def #{method_name}(*args, &block)
-                connection = @use_master ? master_connection : current_read_connection
+                connection = current_read_connection
                 proxy_connection_method(connection, :#{method_name}, :read, *args, &block)
               end
             EOS
@@ -214,12 +214,8 @@ module ActiveRecord
         all_connections.each{|conn| conn.visitor = visitor}
       end
 
-      def visitor
-        r = nil
-        master_connection.with_connection { |c|
-          r = c.visitor
-        }
-        r
+      def visitor(*args, &block)
+        proxy_connection_method(master_connection, :visitor, :master, *args, &block)
       end
 
       def active?
@@ -362,6 +358,19 @@ module ActiveRecord
         end
       end
 
+      def master_connection
+        if @master_expire and @master_expire <= Time.now
+          @master_connection.disconnect!
+          @master_expire = nil
+        end
+        @master_connection
+      end
+
+      def suppress_master_connection(expire)
+        @master_expire = expire.seconds.from_now
+        @logger.warn("Suppressing master connection for #{expire} seconds") if @logger
+      end
+
       # Temporarily remove a connection from the read pool.
       def suppress_read_connection(conn, expire)
         available = available_read_connections
@@ -385,16 +394,34 @@ module ActiveRecord
       private
 
       def proxy_connection_method(connection_pool, method, proxy_type, *args, &block)
+        retry_ok = true
         begin
+          if connection_pool == @master_connection and @master_expire
+            raise "Master connection unavailable"
+          end
+          @logger.warn("PROXYING ---- #{method} TYPEEEE #{proxy_type}, CONNN : #{connection_pool.instance_variable_get(:@spec).config.inspect}")
           connection_pool.with_connection { |connection|
             connection.send(method, *args, &block)
           }
         rescue => e
+          @logger.warn(e)
+          if retry_ok and e.message =~ /(not connected|Can't connect to MySQL|MySQL server has gone away|Lost connection to MySQL server|Packet too large)/i
+            @logger.warn('RECONNECT !! ! ! ! ! !')
+            connection_pool.disconnect!
+            retry_ok = false
+            retry
+          end
           # If the statement was a read statement and it wasn't forced against the master connection
           # try to reconnect if the connection is dead and then re-run the statement.
-          if proxy_type == :read && !using_master_connection?
+          if proxy_type == :read and connection_pool != @master_connection
             suppress_read_connection(connection_pool, 30)
             connection_pool = current_read_connection
+            raise e unless connection_pool
+            SeamlessDatabasePool.set_persistent_read_connection(self, connection_pool)
+            proxy_connection_method(connection_pool, method, :retry, *args, &block)
+          elsif connection_pool == @master_connection and (proxy_type == :read or proxy_type == :master)
+            suppress_master_connection(5)
+            connection_pool = SeamlessDatabasePool.backup_connection(self)
             raise e unless connection_pool
             SeamlessDatabasePool.set_persistent_read_connection(self, connection_pool)
             proxy_connection_method(connection_pool, method, :retry, *args, &block)
