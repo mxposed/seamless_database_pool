@@ -373,43 +373,44 @@ module ActiveRecord
 
       def proxy_connection_method(connection_pool, method, proxy_type, *args, &block)
         if connection_pool == @master_connection and @master_expire
-          retry_proxy(connection_pool, method, proxy_type, *args, &block)
-        else
-          retry_ok = true
-          begin
-            connection_pool.with_connection { |connection|
-              connection.send(method, *args, &block)
-            }
-          rescue => e
-            @logger.warn(e) if @logger
-            if retry_ok and e.message =~ RECONNECT_PATTERN
-              @logger.warn('RECONNECT !! ! ! ! ! !') if @logger
-              connection_pool.disconnect!
-              retry_ok = false
-              retry
-            end
-            if proxy_type == :read or proxy_type == :master
-              retry_proxy(connection_pool, method, proxy_type, *args, &block)
-            else
-              raise e
-            end
+          connection_pool = alternative_connection(connection_pool, method, proxy_type, *args, &block)
+        end
+        retry_ok = true
+        begin
+          connection_pool.with_connection { |connection|
+            connection.send(method, *args, &block)
+          }
+        rescue => e
+          @logger.warn(e) if @logger
+          if retry_ok and e.message =~ RECONNECT_PATTERN
+            @logger.warn('RECONNECT !! ! ! ! ! !') if @logger
+            connection_pool.disconnect!
+            retry_ok = false
+            retry
+          end
+          if proxy_type == :read and connection_pool != @master_connection
+            suppress_read_connection(connection_pool, 30)
+            connection_pool = alternative_connection(connection_pool, method, proxy_type, *args, &block)
+            raise e unless connection_pool
+            SeamlessDatabasePool.set_persistent_read_connection(self, connection_pool)
+            proxy_connection_method(connection_pool, method, :retry, *args, &block)
+          elsif connection_pool == @master_connection and (proxy_type == :read or proxy_type == :master)
+            suppress_master_connection(5)
+            connection_pool = alternative_connection(connection_pool, method, proxy_type, *args, &block)
+            raise e unless connection_pool
+            SeamlessDatabasePool.set_persistent_read_connection(self, connection_pool)
+            proxy_connection_method(connection_pool, method, :retry, *args, &block)
+          else
+            raise e
           end
         end
       end
 
-      def retry_proxy(connection_pool, method, proxy_type, *args, &block)
+      def alternative_connection(connection_pool, method, proxy_type, *args, &block)
         if proxy_type == :read and connection_pool != @master_connection
-          suppress_read_connection(connection_pool, 30)
-          connection_pool = current_read_connection
-          raise e unless connection_pool
-          SeamlessDatabasePool.set_persistent_read_connection(self, connection_pool)
-          proxy_connection_method(connection_pool, method, :retry, *args, &block)
+          current_read_connection
         elsif connection_pool == @master_connection and (proxy_type == :read or proxy_type == :master)
-          suppress_master_connection(5)
-          connection_pool = SeamlessDatabasePool.backup_connection(self)
-          raise e unless connection_pool
-          SeamlessDatabasePool.set_persistent_read_connection(self, connection_pool)
-          proxy_connection_method(connection_pool, method, :retry, *args, &block)
+          SeamlessDatabasePool.backup_connection(self)
         end
       end
 
