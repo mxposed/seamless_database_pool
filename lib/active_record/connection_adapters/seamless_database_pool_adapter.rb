@@ -115,7 +115,8 @@ module ActiveRecord
           master_methods.each do |method_name|
             klass.class_eval <<-EOS, __FILE__, __LINE__ + 1
               def #{method_name}(*args, &block)
-                return proxy_connection_method(master_connection, :#{method_name}, :master, *args, &block)
+                connection = current_read_connection
+                proxy_connection_method(connection, :#{method_name}, :master, *args, &block)
               end
             EOS
           end
@@ -124,7 +125,8 @@ module ActiveRecord
             klass.class_eval <<-EOS, __FILE__, __LINE__ + 1
               def #{method_name}(*args, &block)
                 clear_query_cache if query_cache_enabled
-                return proxy_connection_method(master_connection, :#{method_name}, :master, *args, &block)
+                connection = current_read_connection
+                proxy_connection_method(connection, :#{method_name}, :master, *args, &block)
               end
             EOS
           end
