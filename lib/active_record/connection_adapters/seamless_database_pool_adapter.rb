@@ -198,7 +198,7 @@ module ActiveRecord
       end
 
       def visitor(*args, &block)
-        proxy_connection_method(master_connection, :visitor, :master, *args, &block)
+        proxy_connection_method(current_read_connection, :visitor, :master, *args, &block)
       end
 
       def active?
