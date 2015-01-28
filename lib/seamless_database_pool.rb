@@ -3,6 +3,7 @@
 #require 'active_support/core_ext/class'
 
 require File.join(File.dirname(__FILE__), 'seamless_database_pool', 'connection_statistics.rb')
+require File.join(File.dirname(__FILE__), 'seamless_database_pool', 'connection_initializer.rb')
 require File.join(File.dirname(__FILE__), 'seamless_database_pool', 'controller_filter.rb')
 require File.join(File.dirname(__FILE__), 'active_record', 'connection_adapters', 'seamless_database_pool_adapter.rb')
 require File.join(File.dirname(__FILE__), 'active_record', 'connection_adapters', 'connection_name.rb')
@@ -54,7 +55,7 @@ module SeamlessDatabasePool
     # applications.
     def use_persistent_read_connection
       if block_given?
-        set_read_only_connection_type(:persistent){yield}
+        set_read_only_connection_type(:persistent){ yield }
       else
         Thread.current[:read_only_connection] = {}
       end
@@ -68,7 +69,7 @@ module SeamlessDatabasePool
     # also be used if you pass :readonly => false to any ActiveRecord.find method.
     def use_master_connection
       if block_given?
-        set_read_only_connection_type(:master){yield}
+        set_read_only_connection_type(:master){ yield }
       else
         Thread.current[:read_only_connection] = :master
       end
