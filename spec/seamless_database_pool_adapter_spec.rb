@@ -240,11 +240,11 @@ describe 'SeamlessDatabasePoolAdapter' do
       pool_connection.active?.should == false
     end
 
-    it 'should fork verify! to all connections' do
-      master_connection.should_receive(:verify!).with(5)
-      read_connection_1.should_receive(:verify!).with(5)
-      read_connection_2.should_receive(:verify!).with(5)
-      pool_connection.verify!(5)
+    it 'should ignore verify!' do
+      master_connection.should_not_receive(:verify!)
+      read_connection_1.should_not_receive(:verify!)
+      read_connection_2.should_not_receive(:verify!)
+      pool_connection.verify!
     end
 
     it 'should fork disconnect! to all connections' do

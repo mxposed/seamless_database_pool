@@ -161,7 +161,7 @@ module ActiveRecord
       end
 
       def verify!(*ignored)
-        do_to_connections {|conn| conn.verify!(*ignored)}
+        #do_to_connections {|conn| conn.verify!(*ignored)}
       end
 
       def reset_runtime
