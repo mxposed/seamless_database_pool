@@ -2,7 +2,7 @@ require 'spec_helper'
 require 'active_record/connection_adapters/read_only_adapter'
 
 describe "Test connection adapters" do
-  if SeamlessDatabasePool::TestModel.database_configs.empty?
+  if false and SeamlessDatabasePool::TestModel.database_configs.empty?
     puts "No adapters specified for testing. Specify the adapters with TEST_ADAPTERS variable"
   else
     SeamlessDatabasePool::TestModel.database_configs.keys.each do |adapter|
@@ -34,22 +34,25 @@ describe "Test connection adapters" do
         end
 
         after(:each) do
-          model.delete_all
           SeamlessDatabasePool.use_master_connection
+          model.delete_all
         end
 
-        it "should force the master connection on reload" do
+        it 'should force the master connection on reload' do
           record = model.first
           SeamlessDatabasePool.should_not_receive(:current_read_connection)
           record.reload
         end
 
-        it "should quote table names properly" do
-          connection.quote_table_name("foo").should == master_connection.quote_table_name("foo")
+        it 'should quote table names properly' do
+          puts connection.inspect
+          puts master_connection.inspect
+          puts SeamlessDatabasePool.read_only_connection(connection).inspect
+          connection.quote_table_name('foo').should == master_connection.quote_table_name('foo')
         end
 
-        it "should quote column names properly" do
-          connection.quote_column_name("foo").should == master_connection.quote_column_name("foo")
+        it 'should quote column names properly' do
+          connection.quote_column_name('foo').should == master_connection.quote_column_name('foo')
         end
 
         it "should quote string properly" do

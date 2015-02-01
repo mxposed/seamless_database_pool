@@ -11,6 +11,8 @@ sqlite3:
   read_pool:
     - adapter: read_only
       real_adapter: sqlite3
+    - adapter: read_only
+      real_adapter: sqlite3
 
 postgresql:
   adapter: seamless_database_pool
@@ -33,5 +35,7 @@ mysql:
     adapter: mysql2
     pool_weight: 0
   read_pool:
+    - adapter: read_only
+      real_adapter: mysql2
     - adapter: read_only
       real_adapter: mysql2
