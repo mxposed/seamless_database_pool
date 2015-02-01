@@ -10,7 +10,7 @@ begin
   require 'rspec/core/rake_task'
   desc 'Run the unit tests'
   RSpec::Core::RakeTask.new(:test)
-  
+
   namespace :test do
     desc "Run all tests including for all database adapters"
     task :all do
@@ -22,7 +22,7 @@ begin
         ENV['TEST_ADAPTERS'] = save_val
       end
     end
-    
+
     desc "Test all database adapters defined in database.yml or just the one specified in TEST_ADAPTERS"
     task :adapters do
       save_val = ENV['TEST_ADAPTERS']
@@ -33,13 +33,13 @@ begin
         ENV['TEST_ADAPTERS'] = save_val
       end
     end
-    
+
     namespace :adapters do
       desc "Internal task to run database adapter tests"
       RSpec::Core::RakeTask.new(:specified) do |t|
-        t.pattern = FileList.new('spec/connection_adapters_spec.rb')
+        t.pattern = FileList.new('spec/connection_adapters2_spec.rb')
       end
-      
+
       YAML.load_file(File.expand_path("../spec/database.yml", __FILE__)).keys.each do |adapter_name|
         desc "Test the #{adapter_name} database adapter"
         task adapter_name do
@@ -71,7 +71,7 @@ begin
     gem.files = FileList["lib/**/*", "spec/**/*", "README.rdoc", "Rakefile", "MIT-LICENSE"].to_a
     gem.has_rdoc = true
     gem.extra_rdoc_files = ["README.rdoc", "MIT-LICENSE"]
-  
+
     gem.add_dependency('activerecord', '>= 3.0.20')
     gem.add_development_dependency('rspec', '>= 2.0')
     gem.add_development_dependency('jeweler')

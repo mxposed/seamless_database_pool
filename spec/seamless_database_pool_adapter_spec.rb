@@ -4,6 +4,7 @@ module SeamlessDatabasePool
   class MockConnection < ActiveRecord::ConnectionAdapters::AbstractAdapter
     def initialize (name)
       @name = name
+      super
     end
 
     def inspect

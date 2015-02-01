@@ -138,11 +138,11 @@ module SeamlessDatabasePool
           connection = pool_connection.random_read_connection
           connection_type[pool_connection] = connection
         end
-        return connection
+        connection
       elsif connection_type == :random
-        return pool_connection.random_read_connection
+        pool_connection.random_read_connection
       else
-        return pool_connection.master_connection
+        pool_connection.master_connection
       end
     end
 
