@@ -1,10 +1,10 @@
 # Implementation courtesy of octopus
 module SeamlessDatabasePool
   module ConnectionName
-    parent = defined? ActiveSupport::ProxyObject ? ActiveSupport::ProxyObject : ActiveSupport::BasicObject
+    parent = (defined? ActiveSupport::ProxyObject) ? ActiveSupport::ProxyObject : ActiveSupport::BasicObject
     # We use this proxy to push connection name down to instrumenters
     # w/o monkey-patching the log method itself
-    class InstrumenterDecorator < ActiveSupport::BasicObject
+    class InstrumenterDecorator < parent
       def initialize(adapter, instrumenter)
         @adapter = adapter
         @instrumenter = instrumenter
