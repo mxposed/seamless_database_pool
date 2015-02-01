@@ -1,7 +1,7 @@
 
 source 'https://rubygems.org'
 
-gem 'activerecord', '3.0.20'
+gem 'activerecord', '3.2.20'
 
 group :development do
   gem 'rake'
@@ -9,7 +9,7 @@ group :development do
   gem 'jeweler'
   gem 'mysql2'
   gem 'mysql'
-  gem 'activerecord-mysql2-adapter'
+  # gem 'activerecord-mysql2-adapter'
   # gem 'pg'
   gem 'sqlite3'
 end
