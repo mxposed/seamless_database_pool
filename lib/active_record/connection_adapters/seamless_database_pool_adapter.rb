@@ -258,7 +258,7 @@ module ActiveRecord
               @logger.warn('Failed to reconnect to database when adding connection back to the pool')
               @logger.warn(e)
             end
-            available.expires = option(available.failed_pool, :blacklist)
+            available.expires = option(available.failed_pool, :blacklist).seconds.from_now
             return available.pools
           end
 
