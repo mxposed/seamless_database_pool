@@ -111,6 +111,7 @@ module SeamlessDatabasePool
       if session
         read_pool_method = session[:next_request_db_connection]
         session.delete(:next_request_db_connection) if session[:next_request_db_connection]
+        read_pool_method = nil unless read_pool_method.is_a? Hash
       end
 
       read_pool_method ||= seamless_database_pool_options[action.to_sym] || seamless_database_pool_options[:all]
