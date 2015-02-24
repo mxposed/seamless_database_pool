@@ -368,6 +368,42 @@ describe 'SeamlessDatabasePoolAdapter' do
       pool_connection.available_read_connections.should_not include(read_connection_1)
     end
 
+    it 'should raise error on master connection when no backup' do
+      master_conn = SeamlessDatabasePool::MockMasterConnection.new('master')
+      ActiveRecord::Base.should_receive(:writer_connection).with(master_connection.spec.config).and_return(master_conn)
+
+      master_conn.should_receive(:select).with('SQL').and_raise('Fail')
+      pool_connection.suppress_master_connection(30)
+      expect { pool_connection.send(:select, 'SQL') }.to raise_error('Fail')
+    end
+
+    it 'should use backup on master connection' do
+      master_conn = SeamlessDatabasePool::MockMasterConnection.new('master')
+      read_conn = SeamlessDatabasePool::MockConnection.new('read')
+      ActiveRecord::Base.should_receive(:reader_connection).with(read_connection_1.spec.config).and_return(read_conn)
+
+      read_conn.should_receive(:select).with('SQL').and_return(:results)
+      pool_connection.suppress_read_connection(read_connection_2, 30)
+      pool_connection.suppress_master_connection(30)
+      pool_connection.should_receive(:available_read_connections).and_return([read_connection_1])
+      SeamlessDatabasePool.set_backup_connection_type(:persistent) {
+        pool_connection.send(:select, 'SQL').should == :results
+      }
+    end
+
+    it 'should raise error on master connection when all connections are dead' do
+      master_conn = SeamlessDatabasePool::MockMasterConnection.new('master')
+      ActiveRecord::Base.should_receive(:writer_connection).with(master_connection.spec.config).and_return(master_conn)
+
+      master_conn.should_receive(:select).with('SQL').and_raise('Fail')
+      pool_connection.suppress_read_connection(read_connection_1, 30)
+      pool_connection.suppress_read_connection(read_connection_2, 30)
+      pool_connection.suppress_master_connection(30)
+      SeamlessDatabasePool.set_backup_connection_type(:persistent) {
+        expect { pool_connection.send(:select, 'SQL') }.to raise_error('Fail')
+      }
+    end
+
     it 'should return dead connections to the pool after the timeout has expired' do
       read_conn = SeamlessDatabasePool::MockConnection.new('read')
       ActiveRecord::Base.should_receive(:reader_connection).with(read_connection_1.spec.config).and_return(read_conn)
@@ -377,7 +413,7 @@ describe 'SeamlessDatabasePoolAdapter' do
       pool_connection.available_read_connections.should_not include(read_connection_1)
       sleep(0.3)
       read_conn.should_receive(:reconnect!)
-      read_conn.should_receive(:active?).and_return(true, true)
+      read_conn.should_not_receive(:verify!)
       pool_connection.available_read_connections.should include(read_connection_1)
     end
 
@@ -390,7 +426,8 @@ describe 'SeamlessDatabasePoolAdapter' do
       pool_connection.available_read_connections.should_not include(read_connection_1)
       sleep(0.3)
       read_conn.should_receive(:reconnect!)
-      read_conn.should_receive(:active?).and_return(true, false)
+      read_conn.should_not_receive(:verify!)
+      read_conn.should_receive(:active?).and_return(false)
       pool_connection.available_read_connections.should_not include(read_connection_1)
     end
 

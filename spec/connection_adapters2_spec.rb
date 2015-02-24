@@ -104,7 +104,7 @@ describe 'Test connection adapters' do
             read_pool2 = connection.available_read_connections.second
             connection.should_receive(:random_read_connection).and_return(read_pool1)
             connection.should_receive(:random_read_connection).and_return(read_pool2)
-            read_pool1.should_receive(:new_connection).twice.and_raise(StandardError.new("Can't connect"))
+            read_pool1.should_receive(:new_connection).and_raise(StandardError.new("Can't connect"))
             SeamlessDatabasePool.use_persistent_read_connection do
               SeamlessDatabasePool.set_backup_connection_type(:master) do
                 model.all

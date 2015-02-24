@@ -307,11 +307,12 @@ module ActiveRecord
 
       private
 
-      RECONNECT_PATTERN = /(Can't connect|MySQL server has gone away|Lost connection to MySQL server|Packet too large)/i
+      RECONNECT_PATTERN = /(MySQL server has gone away|Lost connection to MySQL server|Packet too large)/i
 
       def proxy_connection_method(connection_pool, method, proxy_type, *args, &block)
         if connection_pool == @master_connection and @master_expire
-          connection_pool = alternative_connection(connection_pool, method, proxy_type, *args, &block)
+          replace = alternative_connection(connection_pool, method, proxy_type, *args, &block)
+          connection_pool = replace unless replace.nil?
         end
         retry_ok = true
         begin
@@ -350,10 +351,12 @@ module ActiveRecord
 
       def alternative_connection(connection_pool, method, proxy_type, *args, &block)
         if connection_pool != @master_connection
-          current_read_connection
+          r = current_read_connection
         else
-          SeamlessDatabasePool.backup_connection(self)
+          r = SeamlessDatabasePool.backup_connection(self)
         end
+        r = nil if r == connection_pool
+        r
       end
 
       # Yield a block to each connection in the pool. If the connection is dead, ignore the error
