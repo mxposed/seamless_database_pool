@@ -46,7 +46,7 @@ module SeamlessDatabasePool
     end
 
     def self.pool_for(config)
-      ActiveRecord::ConnectionAdapters::ConnectionPool.new(spec_class.new(config, "#{config[:adapter]}_connection"))
+      ActiveRecord::ConnectionAdapters::NoVerifyConnectionPool.new(spec_class.new(config, "#{config[:adapter]}_connection"))
     end
 
     def self.establish_adapter(adapter)

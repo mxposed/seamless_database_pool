@@ -7,6 +7,7 @@ require File.join(File.dirname(__FILE__), 'seamless_database_pool', 'connection_
 require File.join(File.dirname(__FILE__), 'seamless_database_pool', 'controller_filter.rb')
 require File.join(File.dirname(__FILE__), 'active_record', 'connection_adapters', 'seamless_database_pool_adapter.rb')
 require File.join(File.dirname(__FILE__), 'active_record', 'connection_adapters', 'connection_name.rb')
+require File.join(File.dirname(__FILE__), 'active_record', 'connection_adapters', 'no_verify_connection_pool.rb')
 require File.join(File.dirname(__FILE__), 'seamless_database_pool', 'active_record', 'log_subscriber.rb')
 require File.join(File.dirname(__FILE__), 'seamless_database_pool', 'railtie.rb') if defined?(Rails::Railtie)
 
