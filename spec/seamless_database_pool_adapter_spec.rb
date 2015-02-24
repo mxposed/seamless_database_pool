@@ -378,7 +378,6 @@ describe 'SeamlessDatabasePoolAdapter' do
     end
 
     it 'should use backup on master connection' do
-      master_conn = SeamlessDatabasePool::MockMasterConnection.new('master')
       read_conn = SeamlessDatabasePool::MockConnection.new('read')
       ActiveRecord::Base.should_receive(:reader_connection).with(read_connection_1.spec.config).and_return(read_conn)
 
