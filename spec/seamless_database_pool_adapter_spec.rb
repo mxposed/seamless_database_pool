@@ -390,6 +390,23 @@ describe 'SeamlessDatabasePoolAdapter' do
       }
     end
 
+    it 'should use backup on master connection 2' do
+      master_conn = SeamlessDatabasePool::MockMasterConnection.new('master')
+      ActiveRecord::Base.should_receive(:writer_connection).with(master_connection.spec.config).twice.and_return(master_conn)
+      read_conn = SeamlessDatabasePool::MockConnection.new('read')
+      ActiveRecord::Base.should_receive(:reader_connection).with(read_connection_1.spec.config).and_return(read_conn)
+
+      read_conn.should_receive(:select).with('SQL').and_return(:results)
+      master_conn.should_receive(:select).with('SQL').twice.and_raise('Lost connection to MySQL server')
+      pool_connection.suppress_read_connection(read_connection_2, 30)
+      pool_connection.should_receive(:available_read_connections).and_return([read_connection_1])
+      SeamlessDatabasePool.set_read_only_connection_type(:master) {
+        SeamlessDatabasePool.set_backup_connection_type(:persistent) {
+          pool_connection.send(:select, 'SQL').should == :results
+        }
+      }
+    end
+
     it 'should raise error on master connection when all connections are dead' do
       master_conn = SeamlessDatabasePool::MockMasterConnection.new('master')
       ActiveRecord::Base.should_receive(:writer_connection).with(master_connection.spec.config).and_return(master_conn)

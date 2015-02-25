@@ -22,7 +22,7 @@ module SeamlessDatabasePool
           else
             alias_method_chain :process, :seamless_database_pool
           end
-          alias_method_chain :redirect_to, :seamless_database_pool
+          # alias_method_chain :redirect_to, :seamless_database_pool
         end
       end
     end
@@ -89,12 +89,15 @@ module SeamlessDatabasePool
       end
     end
 
-    def redirect_to_with_seamless_database_pool(options = {}, response_status = {})
-      if SeamlessDatabasePool.read_only_connection_type(nil) == :master
-        use_master_db_connection_on_next_request
-      end
-      redirect_to_without_seamless_database_pool(options, response_status)
-    end
+    # CONDUCTOR-620: disable since now every controller has it's own db policy
+    #                and doesn't need additional post-redirect guidance
+    #
+    # def redirect_to_with_seamless_database_pool(options = {}, response_status = {})
+    #   if SeamlessDatabasePool.read_only_connection_type(nil) == :master
+    #     use_master_db_connection_on_next_request
+    #   end
+    #   redirect_to_without_seamless_database_pool(options, response_status)
+    # end
 
     private
 
