@@ -179,7 +179,6 @@ module ActiveRecord
         else
           if weighted_read_connections.empty?
             backup = SeamlessDatabasePool.backup_connection(self) unless is_backup
-            return @available_read_connections.last.failed_pool unless backup
             return backup
           end
           weighted_read_connections[rand(weighted_read_connections.length)]
@@ -300,7 +299,7 @@ module ActiveRecord
         return if pools.length == available.length
 
 
-        @logger.warn("Removing #{pool.inspect} from the connection pool for #{expire} seconds") if @logger
+        @logger.warn("Removing #{pool.spec.config['connection_name']} from the connection pool for #{expire} seconds") if @logger
         # Available connections will now not include the suppressed connection for a while
         @available_read_connections.push(AvailableConnections.new(pools, pool, expire.seconds.from_now))
       end
@@ -350,11 +349,7 @@ module ActiveRecord
       end
 
       def alternative_connection(connection_pool, method, proxy_type, *args, &block)
-        if connection_pool != @master_connection
-          r = current_read_connection
-        else
-          r = SeamlessDatabasePool.backup_connection(self)
-        end
+        r = SeamlessDatabasePool.backup_connection(self)
         r = nil if r == connection_pool
         r
       end
