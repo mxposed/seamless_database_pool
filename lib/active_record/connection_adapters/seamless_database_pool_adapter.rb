@@ -135,11 +135,15 @@ module ActiveRecord
       end
 
       def visitor=(visitor)
-        all_connections.each { |conn| conn.visitor = visitor }
+        @visitor = visitor.class.new(self)
       end
 
       def visitor(*args, &block)
-        proxy_connection_method(current_read_connection, :visitor, :master, *args, &block)
+        if @visitor.nil?
+          visitor = proxy_connection_method(current_read_connection, :visitor, :read, *args, &block)
+          @visitor = visitor.class.new(self)
+        end
+        @visitor
       end
 
       def active?
