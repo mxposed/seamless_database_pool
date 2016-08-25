@@ -297,10 +297,9 @@ module ActiveRecord
       def suppress_master_connection(expire)
         @master_expire = expire.seconds.from_now
         @logger.warn("Suppressing master connection for #{expire} seconds") if @logger
-        if all_slaves_down?
-          @logger.warn('All slaves are down as well, killing self with QUIT')
-          Process.kill(:QUIT, Process.pid)
-        end
+
+        @logger.warn('Cannot live without master, killing self with QUIT')
+        Process.kill(:QUIT, Process.pid)
       end
 
       # Temporarily remove a connection from the read pool.
@@ -353,11 +352,12 @@ module ActiveRecord
             SeamlessDatabasePool.set_persistent_read_connection(self, connection_pool)
             proxy_connection_method(connection_pool, method, :retry, *args, &block)
           else
-            suppress_master_connection(option(@master_connection, :blacklist))
-            connection_pool = alternative_connection(connection_pool, method, proxy_type, *args, &block)
-            raise e unless connection_pool
-            SeamlessDatabasePool.set_persistent_read_connection(self, connection_pool)
-            proxy_connection_method(connection_pool, method, :retry, *args, &block)
+            raise e
+            # suppress_master_connection(option(@master_connection, :blacklist))
+            # connection_pool = alternative_connection(connection_pool, method, proxy_type, *args, &block)
+            # raise e unless connection_pool
+            # SeamlessDatabasePool.set_persistent_read_connection(self, connection_pool)
+            # proxy_connection_method(connection_pool, method, :retry, *args, &block)
           end
         end
       end
