@@ -282,7 +282,7 @@ module ActiveRecord
 
       def all_slaves_down?
         available = @available_read_connections.last
-        not available.expired? and available.empty?
+        not available.expired? and available.pools.empty?
       end
 
       def master_connection
