@@ -352,6 +352,8 @@ module ActiveRecord
             SeamlessDatabasePool.set_persistent_read_connection(self, connection_pool)
             proxy_connection_method(connection_pool, method, :retry, *args, &block)
           else
+            @logger.warn('Cannot live without master, killing self with QUIT')
+            Process.kill(:QUIT, Process.pid)
             raise e
             # suppress_master_connection(option(@master_connection, :blacklist))
             # connection_pool = alternative_connection(connection_pool, method, proxy_type, *args, &block)
