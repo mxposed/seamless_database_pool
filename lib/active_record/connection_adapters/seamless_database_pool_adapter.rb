@@ -314,13 +314,13 @@ module ActiveRecord
         # This wasn't a read connection so don't suppress it
         return if pools.length == available.length
 
-
         @logger.warn("Removing #{pool.spec.config['connection_name']} from the connection pool for #{expire} seconds") if @logger
         # Available connections will now not include the suppressed connection for a while
         @available_read_connections.push(AvailableConnections.new(pools, pool, expire.seconds.from_now))
+
         if pools.empty? and master_down?
-          @logger.warn('This was the last slave, master is down as well, killing self with QUIT')
-          Process.kill(:QUIT, Process.pid)
+          @logger.warn('This was the last slave, master is down as well')
+          raise DatabaseConnectionError
         end
       end
 
@@ -345,21 +345,19 @@ module ActiveRecord
             retry_ok = false
             retry
           end
-          if connection_pool != @master_connection
+
+          if connection_pool == @master_connection
+            @logger.warn('Cannot live without master') if @logger
+
+            raise DatabaseConnectionError
+          else
             suppress_read_connection(connection_pool, option(connection_pool, :blacklist))
+
             connection_pool = alternative_connection(connection_pool, method, proxy_type, *args, &block)
-            raise e unless connection_pool
+            raise DatabaseConnectionError unless connection_pool
+
             SeamlessDatabasePool.set_persistent_read_connection(self, connection_pool)
             proxy_connection_method(connection_pool, method, :retry, *args, &block)
-          else
-            @logger.warn('Cannot live without master, killing self with QUIT')
-            Process.kill(:QUIT, Process.pid)
-            raise e
-            # suppress_master_connection(option(@master_connection, :blacklist))
-            # connection_pool = alternative_connection(connection_pool, method, proxy_type, *args, &block)
-            # raise e unless connection_pool
-            # SeamlessDatabasePool.set_persistent_read_connection(self, connection_pool)
-            # proxy_connection_method(connection_pool, method, :retry, *args, &block)
           end
         end
       end
